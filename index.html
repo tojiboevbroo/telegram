@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milliy Star - Telegram Mini App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --primary: #3b82f6;
+            --accent: #10b981;
+            --text: #f8fafc;
+            --text-secondary: #94a3b8;
+            --danger: #ef4444;
+            --border: #334155;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: var(--bg-color); color: var(--text); padding-bottom: 80px; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: var(--card-bg); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; }
+        h1 { font-size: 1.25rem; font-weight: 700; color: var(--primary); }
+        .admin-btn { background: none; border: 1px solid var(--border); color: var(--text-secondary); padding: 5px 10px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; }
+        .container { padding: 15px; max-width: 600px; margin: 0 auto; }
+        .banner { background: linear-gradient(135deg, #3b82f6, #1d4ed8); border-radius: 16px; padding: 20px; margin-bottom: 20px; text-align: center; }
+        .banner h2 { font-size: 1.5rem; margin-bottom: 5px; }
+        .banner p { font-size: 0.9rem; opacity: 0.9; }
+        .section-title { font-size: 1.1rem; margin-bottom: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+        .products-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+        .product-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 14px; padding: 15px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+        .product-card.premium { border-color: #f59e0b; }
+        .product-card .badge { position: absolute; top: 10px; right: 10px; background: #f59e0b; color: #000; font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+        .product-icon { font-size: 2rem; margin-bottom: 10px; }
+        .product-name { font-size: 1rem; font-weight: 600; margin-bottom: 5px; }
+        .product-price { color: var(--accent); font-weight: 700; font-size: 0.95rem; margin-bottom: 10px; }
+        .buy-btn { background: var(--primary); color: white; border: none; padding: 8px 12px; border-radius: 8px; font-weight: 600; width: 100%; cursor: pointer; font-size: 0.9rem; }
+        .buy-btn:active { opacity: 0.8; }
+        
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
+        .modal-content { background: var(--card-bg); width: 100%; max-width: 400px; border-radius: 16px; padding: 20px; border: 1px solid var(--border); position: relative; max-height: 90vh; overflow-y: auto; }
+        .close-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; color: var(--text-secondary); font-size: 1.2rem; cursor: pointer; }
+        input, textarea { width: 100%; padding: 10px; margin: 10px 0; background: var(--bg-color); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.95rem; }
+        .notice { font-size: 0.8rem; color: #f59e0b; background: rgba(245, 158, 11, 0.1); padding: 8px; border-radius: 6px; margin-bottom: 10px; line-height: 1.3; }
+        
+        /* Admin Panel */
+        .admin-panel { display: none; }
+        .order-item { background: var(--bg-color); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; font-size: 0.85rem; }
+        .order-item p { margin-bottom: 4px; }
+        .status-select { background: var(--card-bg); color: var(--text); border: 1px solid var(--border); padding: 4px; border-radius: 6px; }
+        
+        /* Bottom Nav */
+        .nav-bar { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--card-bg); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 12px; z-index: 99; }
+        .nav-item { background: none; border: none; color: var(--text-secondary); font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+        .nav-item.active { color: var(--primary); }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🌟 Milliy Star</h1>
+        <button class="admin-btn" onclick="toggleAdmin()">Admin</button>
+    </header>
+
+    <div class="container">
+        <!-- SHOP VIEW -->
+        <div id="shopView">
+            <div class="banner">
+                <h2>Telegram Stars</h2>
+                <p>Eng arzon va tezkor yulduzlar do'koni. 1 Star = 240 UZS</p>
+            </div>
+
+            <div class="section-title"><span>Mahsulotlar</span></div>
+            <div class="products-grid" id="productsGrid">
+                <!-- Dinamik mahsulotlar chiqadi -->
+            </div>
+        </div>
+
+        <!-- ORDERS VIEW -->
+        <div id="ordersView" style="display: none;">
+            <div class="section-title"><span>Buyurtmalarim tarixi</span></div>
+            <div id="myOrdersList"></div>
+        </div>
+
+        <!-- ADMIN VIEW -->
+        <div id="adminView" class="admin-panel">
+            <div class="section-title"><span>Admin Panel</span></div>
+            <input type="text" id="searchInput" placeholder="Buyurtma kodi bo'yicha qidirish (#MS-...)" oninput="filterOrders()">
+            <div id="adminOrdersList"></div>
+            
+            <div class="section-title" style="margin-top: 20px;"><span>Yangi mahsulot qo'shish</span></div>
+            <input type="text" id="newTitle" placeholder="Mahsulot nomi (masalan: 100 Stars)">
+            <input type="number" id="newAmount" placeholder="Stars miqdori">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; margin: 5px 0;">
+                <input type="checkbox" id="newIsPremium"> Akauntga kirib olinadi (Premium)
+            </label>
+            <button class="buy-btn" onclick="addProduct()" style="margin-top: 10px;">Qo'shish</button>
+        </div>
+    </div>
+
+    <!-- BUY MODAL -->
+    <div class="modal" id="buyModal">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+            <h3 id="modalTitle" style="margin-bottom: 10px;">Buyurtma berish</h3>
+            <div id="modalNotice" class="notice" style="display: none;">
+                ⚠️ <b>Diqqat:</b> Ushbu mahsulot uchun akauntga kirib bajariladi! Ma'lumotlarni to'g'ri kiriting.
+            </div>
+            <p id="modalPrice" style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 10px;"></p>
+            <textarea id="userNote" rows="3" placeholder="Telegram username yoki qo'shimcha ma'lumot..."></textarea>
+            <button class="buy-btn" onclick="submitOrder()">Tasdiqlash va Kod olish</button>
+        </div>
+    </div>
+
+    <!-- SUCCESS MODAL -->
+    <div class="modal" id="successModal">
+        <div class="modal-content" style="text-align: center;">
+            <h3>Buyurtma yaratildi! 🎉</h3>
+            <p style="font-size: 0.9rem; color: var(--text-secondary); margin: 10px 0;">Quyidagi kodni nusxalab, admin (<a href="https://t.me/azizhub" target="_blank" style="color: var(--primary);">@azizhub</a>) ga yuboring:</p>
+            <div id="orderCodeBox" style="background: var(--bg-color); padding: 15px; border-radius: 8px; font-size: 1.2rem; font-weight: bold; color: var(--accent); margin: 15px 0; border: 1px dashed var(--accent); user-select: all;"></div>
+            <button class="buy-btn" onclick="copyCode()">Kodni nusxalash</button>
+        </div>
+    </div>
+
+    <!-- NAV BAR -->
+    <div class="nav-bar">
+        <button class="nav-item active" onclick="switchTab('shop', this)">🛍 Do'kon</button>
+        <button class="nav-item" onclick="switchTab('orders', this)">📋 Buyurtmalarim</button>
+    </div>
+
+    <script>
+        const RATE = 240; // 1 Star = 240 UZS
+        let selectedProduct = null;
+
+        // Boshlang'ich ma'lumotlar (localStorage'da bo'lmasa)
+        const defaultProducts = [
+            { id: 1, title: "50 Stars", amount: 50, isPremium: false },
+            { id: 2, title: "100 Stars", amount: 100, isPremium: false },
+            { id: 3, title: "250 Stars", amount: 250, isPremium: true },
+            { id: 4, title: "500 Stars", amount: 500, isPremium: true }
+        ];
+
+        function getProducts() {
+            let p = localStorage.getItem('ms_products');
+            return p ? JSON.parse(p) : defaultProducts;
+        }
+
+        function saveProducts(products) {
+            localStorage.setItem('ms_products', JSON.stringify(products));
+        }
+
+        function getOrders() {
+            let o = localStorage.getItem('ms_orders');
+            return o ? JSON.parse(o) : [];
+        }
+
+        function saveOrders(orders) {
+            localStorage.setItem('ms_orders', JSON.stringify(orders));
+        }
+
+        // Render products
+        function renderProducts() {
+            const grid = document.getElementById('productsGrid');
+            const products = getProducts();
+            grid.innerHTML = '';
+            products.forEach(prod => {
+                let price = prod.amount * RATE;
+                grid.innerHTML += `
+                    <div class="product-card ${prod.isPremium ? 'premium' : ''}">
+                        ${prod.isPremium ? '<span class="badge">Akauntga</span>' : ''}
+                        <div>
+                            <div class="product-icon">⭐</div>
+                            <div class="product-name">${prod.title}</div>
+                            <div class="product-price">${price.toLocaleString()} UZS</div>
+                        </div>
+                        <button class="buy-btn" onclick="openBuyModal(${prod.id})">Sotib olish</button>
+                    </div>
+                `;
+            });
+        }
+
+        function openBuyModal(id) {
+            const products = getProducts();
+            selectedProduct = products.find(p => p.id === id);
+            if (!selectedProduct) return;
+
+            document.getElementById('modalTitle').innerText = selectedProduct.title;
+            document.getElementById('modalPrice').innerText = `Narxi: ${(selectedProduct.amount * RATE).toLocaleString()} UZS`;
+            
+            const notice = document.getElementById('modalNotice');
+            if (selectedProduct.isPremium) {
+                notice.style.display = 'block';
+            } else {
+                notice.style.display = 'none';
+            }
+            
+            document.getElementById('userNote').value = '';
+            document.getElementById('buyModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('buyModal').style.display = 'none';
+            document.getElementById('successModal').style.display = 'none';
+        }
+
+        function submitOrder() {
+            const note = document.getElementById('userNote').value.trim();
+            if (!note) {
+                alert('Iltimos, ma\'lumot kiriting!');
+                return;
+            }
+
+            const code = '#MS-' + Math.floor(10000 + Math.random() * 90000);
+            const orders = getOrders();
+            
+            const newOrder = {
+                code: code,
+                title: selectedProduct.title,
+                price: selectedProduct.amount * RATE,
+                note: note,
+                status: 'Kutilmoqda',
+                date: new Date().toLocaleString()
+            };
+
+            orders.unshift(newOrder);
+            saveOrders(orders);
+            closeModal();
+
+            document.getElementById('orderCodeBox').innerText = code;
+            document.getElementById('successModal').style.display = 'flex';
+            renderMyOrders();
+        }
+
+        function copyCode() {
+            const codeText = document.getElementById('orderCodeBox').innerText;
+            navigator.clipboard.writeText(codeText).then(() => {
+                alert('Kod nusxalandi! Endi uni @azizhub ga yuboring.');
+            });
+        }
+
+        function renderMyOrders() {
+            const list = document.getElementById('myOrdersList');
+            const orders = getOrders();
+            list.innerHTML = '';
+            if (orders.length === 0) {
+                list.innerHTML = '<p style="color:var(--text-secondary); text-align:center; margin-top:20px;">Hozircha buyurtmalar yo\'q</p>';
+                return;
+            }
+            orders.forEach(ord => {
+                list.innerHTML += `
+                    <div class="order-item">
+                        <div style="display:flex; justify-content:space-between; font-weight:bold; margin-bottom:5px;">
+                            <span>${ord.code}</span>
+                            <span style="color:var(--accent);">${ord.status}</span>
+                        </div>
+                        <p><b>Mahsulot:</b> ${ord.title} (${ord.price.toLocaleString()} UZS)</p>
+                        <p><b>Ma'lumot:</b> ${ord.note}</p>
+                        <p style="font-size:0.75rem; color:var(--text-secondary); margin-top:5px;">${ord.date}</p>
+                    </div>
+                `;
+            });
+        }
+
+        // Tabs
+        function switchTab(tab, btn) {
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            btn.classList.add('active');
+
+            document.getElementById('shopView').style.display = 'none';
+            document.getElementById('ordersView').style.display = 'none';
+            document.getElementById('adminView').style.display = 'none';
+
+            if (tab === 'shop') {
+                document.getElementById('shopView').style.display = 'block';
+            } else if (tab === 'orders') {
+                renderMyOrders();
+                document.getElementById('ordersView').style.display = 'block';
+            }
+        }
+
+        // Admin functions
+        function toggleAdmin() {
+            const adminView = document.getElementById('adminView');
+            const shopView = document.getElementById('shopView');
+            const ordersView = document.getElementById('ordersView');
+
+            if (adminView.style.display === 'block') {
+                adminView.style.display = 'none';
+                shopView.style.display = 'block';
+            } else {
+                shopView.style.display = 'none';
+                ordersView.style.display = 'none';
+                adminView.style.display = 'block';
+                renderAdminOrders();
+            }
+        }
+
+        function renderAdminOrders(filter = '') {
+            const list = document.getElementById('adminOrdersList');
+            const orders = getOrders();
+            list.innerHTML = '';
+            
+            const filtered = orders.filter(o => o.code.toLowerCase().includes(filter.toLowerCase()) || o.note.toLowerCase().includes(filter.toLowerCase()));
+            
+            if (filtered.length === 0) {
+                list.innerHTML = '<p style="color:var(--text-secondary); text-align:center;">Buyurtmalar topilmadi</p>';
+                return;
+            }
+
+            filtered.forEach((ord, index) => {
+                list.innerHTML += `
+                    <div class="order-item">
+                        <div style="display:flex; justify-content:space-between; font-weight:bold; margin-bottom:5px;">
+                            <span>${ord.code}</span>
+                            <select class="status-select" onchange="updateStatus('${ord.code}', this.value)">
+                                <option value="Kutilmoqda" ${ord.status === 'Kutilmoqda' ? 'selected' : ''}>Kutilmoqda</option>
+                                <option value="Bajarildi" ${ord.status === 'Bajarildi' ? 'selected' : ''}>Bajarildi</option>
+                                <option value="Bekor qilindi" ${ord.status === 'Bekor qilindi' ? 'selected' : ''}>Bekor qilindi</option>
+                            </select>
+                        </div>
+                        <p><b>Mahsulot:</b> ${ord.title}</p>
+                        <p><b>Ma'lumot:</b> ${ord.note}</p>
+                        <p style="font-size:0.75rem; color:var(--text-secondary);">${ord.date}</p>
+                    </div>
+                `;
+            });
+        }
+
+        function filterOrders() {
+            const val = document.getElementById('searchInput').value;
+            renderAdminOrders(val);
+        }
+
+        function updateStatus(code, newStatus) {
+            let orders = getOrders();
+            let ord = orders.find(o => o.code === code);
+            if (ord) {
+                ord.status = newStatus;
+                saveOrders(orders);
+            }
+        }
+
+        function addProduct() {
+            const title = document.getElementById('newTitle').value.trim();
+            const amount = parseInt(document.getElementById('newAmount').value);
+            const isPremium = document.getElementById('newIsPremium').checked;
+
+            if (!title || !amount) {
+                alert('Barcha maydonlarni to\'ldiring!');
+                return;
+            }
+
+            let products = getProducts();
+            const newProd = {
+                id: Date.now(),
+                title: title,
+                amount: amount,
+                isPremium: isPremium
+            };
+
+            products.push(newProd);
+            saveProducts(products);
+            renderProducts();
+
+            document.getElementById('newTitle').value = '';
+            document.getElementById('newAmount').value = '';
+            document.getElementById('newIsPremium').checked = false;
+            alert('Mahsulot qo\'shildi!');
+        }
+
+        // Init
+        renderProducts();
+    </script>
+</body>
+</html>
+
